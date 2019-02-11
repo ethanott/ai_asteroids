@@ -53,6 +53,38 @@ def distance(p, q):
 # General Helper functions (END)
 ################################
 
+class VectorArrow():
+    def __init__(self,screen):
+        self.direction = [0, 1]
+        self.length = 1
+        self.angle = 0
+
+    def draw_on(self,screen,position):
+        end_position = [0, 0]
+        end_position[0] = position[0] + math.sin(-math.radians(self.angle))*self.length
+        end_position[1] = position[1] + -math.cos(math.radians(self.angle))*self.length
+        pygame.draw.line(screen, (255,0,0), position, end_position, 2)
+        L = 10
+        H = 5
+        endX = end_position[0]
+        endY = end_position[1]
+        dX = end_position[0]-position[0]
+        dY = end_position[1]-position[1]
+        Len = math.sqrt(dX*dX + dY*dY)
+        udX = dX/Len
+        udY = dY/Len
+        perpX = -udY
+        perpY = udX
+        leftX = endX - L*udX + H*perpX
+        leftY = endY - L*udY + H*perpY
+        rightX = endX - L * udX - H * perpX
+        rightY = endY - L * udY - H * perpY
+
+        pygame.draw.polygon(screen,(255,0,0),[end_position,[leftX,leftY],[rightX,rightY]],2)
+
+    def update_by_angle(self,angle,length):
+        self.angle = angle
+        self.length = length
 
 class GameObject(object):
     """All game objects have a position and an image"""
@@ -101,7 +133,9 @@ class Spaceship(GameObject):
                 self.image.get_rect(), self.angle)
         
         draw_centered(new_image, screen, self.position)
-
+        ship_arrow = VectorArrow(screen)
+        ship_arrow.update_by_angle(self.angle,self.speed*8+1)
+        ship_arrow.draw_on(screen,self.position)
 
     def move(self):
         """Do one frame's worth of updating for the object"""
@@ -403,7 +437,7 @@ class MyGame(object):
                             # if the throttle key ("d" or "up")
                             # is not pressed, slow down
                             if self.spaceship.speed > 0:
-                                self.spaceship.speed -= 0.8
+                                self.spaceship.speed -= 1
                             self.spaceship.is_throttle_on = False
 
                         # if there are any missiles on the screen, process them
