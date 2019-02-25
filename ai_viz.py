@@ -1,6 +1,5 @@
 import math
 import pygame
-from ext_support import calculate_initial_compass_bearing
 
 def angle_project_point(angle,length):
     point = [0, 0]
