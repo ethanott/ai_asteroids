@@ -15,7 +15,7 @@ import os
 import datetime
 import random
 import pygame
-
+from ai_viz import *
 
 ##################################
 # General Helper functions (START)
@@ -53,38 +53,6 @@ def distance(p, q):
 # General Helper functions (END)
 ################################
 
-class VectorArrow():
-    def __init__(self,screen):
-        self.direction = [0, 1]
-        self.length = 1
-        self.angle = 0
-
-    def draw_on(self,screen,position):
-        end_position = [0, 0]
-        end_position[0] = position[0] + math.sin(-math.radians(self.angle))*self.length
-        end_position[1] = position[1] + -math.cos(math.radians(self.angle))*self.length
-        pygame.draw.line(screen, (255,0,0), position, end_position, 2)
-        L = 10
-        H = 5
-        endX = end_position[0]
-        endY = end_position[1]
-        dX = end_position[0]-position[0]
-        dY = end_position[1]-position[1]
-        Len = math.sqrt(dX*dX + dY*dY)
-        udX = dX/Len
-        udY = dY/Len
-        perpX = -udY
-        perpY = udX
-        leftX = endX - L*udX + H*perpX
-        leftY = endY - L*udY + H*perpY
-        rightX = endX - L * udX - H * perpX
-        rightY = endY - L * udY - H * perpY
-
-        pygame.draw.polygon(screen,(255,0,0),[end_position,[leftX,leftY],[rightX,rightY]],2)
-
-    def update_by_angle(self,angle,length):
-        self.angle = angle
-        self.length = length
 
 class GameObject(object):
     """All game objects have a position and an image"""
@@ -96,7 +64,7 @@ class GameObject(object):
 
     def draw_on(self, screen):
         draw_centered(self.image, screen, self.position)
-        pygame.draw.circle(screen,(255, 0, 0),[int(i) for i in self.position],int(10)) #TODO make this converstion better??
+        pygame.draw.circle(screen,(255, 0, 0),[int(i) for i in self.position],int(5)) #TODO make this converstion better??
 
     def size(self):
         return max(self.image.get_height(), self.image.get_width())
@@ -116,6 +84,12 @@ class Spaceship(GameObject):
         self.is_throttle_on = False
         self.angle = 0
 
+        # give sensors
+        self.sensors = sensor_set()
+        self.sensors.append(radar_sensor(45, 300, 0))  # forward long range
+        self.sensors.append(radar_sensor(60, 300, 180))  # rearward short range
+
+
         # a list to hold the missiles fired by the spaceship
         # (that are active (on the screen))
         self.active_missiles = []
@@ -133,9 +107,7 @@ class Spaceship(GameObject):
                 self.image.get_rect(), self.angle)
         
         draw_centered(new_image, screen, self.position)
-        ship_arrow = VectorArrow(screen)
-        ship_arrow.update_by_angle(self.angle,self.speed*8+1)
-        ship_arrow.draw_on(screen,self.position)
+
 
     def move(self):
         """Do one frame's worth of updating for the object"""
@@ -438,6 +410,10 @@ class MyGame(object):
                             # is not pressed, slow down
                             if self.spaceship.speed > 0:
                                 self.spaceship.speed -= 1
+                            # ensure ship does not move backwards
+                            if self.spaceship.speed < 0:
+                                self.spaceship.speed = 0
+
                             self.spaceship.is_throttle_on = False
 
                         # if there are any missiles on the screen, process them
@@ -453,6 +429,13 @@ class MyGame(object):
 
                 # draw everything
                 self.draw()
+
+                if self.state == MyGame.PLAYING:
+                    # spaceship and rocks are now ground truth values
+                    # pass to the perception model to build / update sensor view of world
+                    perception(self.screen, self.spaceship, self.rocks)
+
+                pygame.display.flip()
 
             # resume after losing a life
             elif event.type == MyGame.START:
@@ -619,8 +602,8 @@ class MyGame(object):
                 for missile in self.spaceship.active_missiles:
                     missile.draw_on(self.screen)
 
-            # draw the rocks
-            if len(self.rocks) >  0:
+            # draw the rocks ##TEST
+            if len(self.rocks) > 0:
                 for rock in self.rocks:
                     rock.draw_on(self.screen)
 
@@ -673,7 +656,7 @@ class MyGame(object):
                     +self.welcome_desc.get_height()))
 
         # flip buffers so that everything we have drawn gets displayed
-        pygame.display.flip()
+        # pygame.display.flip()
 
 
 MyGame().run()
